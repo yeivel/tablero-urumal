@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tablero Kanban Urumal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fbf6f1;--surface:#ffffff;--surface2:#f5ebe2;--ink:#3b2418;--muted:#7a5d4c;--line:#ead9cb;
+  --terra:#c0612b;--terra-soft:#e8a87c;--water:#2b8fbf;--water-soft:#e8f5fc;--ok:#3a8f3d;--warn:#d98a1c;--bad:#b8402a;--idle:#a8968a;
+  --shadow:0 1px 2px rgba(59,36,24,.08),0 4px 14px rgba(59,36,24,.06);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1d1410;--surface:#2a1e18;--surface2:#33251d;--ink:#f6e9df;--muted:#c4a896;--line:#45342a;
+  --terra:#e07a42;--terra-soft:#a8603a;--water:#5cb3df;--water-soft:#183040;--ok:#6cc070;--warn:#f0a940;--bad:#ec6b52;--idle:#8a7a70;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.25);
+}}
+:root[data-theme="dark"]{
+  --bg:#1d1410;--surface:#2a1e18;--surface2:#33251d;--ink:#f6e9df;--muted:#c4a896;--line:#45342a;
+  --terra:#e07a42;--terra-soft:#a8603a;--water:#5cb3df;--water-soft:#183040;--ok:#6cc070;--warn:#f0a940;--bad:#ec6b52;--idle:#8a7a70;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Poppins,system-ui,sans-serif;font-size:14px;line-height:1.45}
+.wrap{max-width:1400px;margin:0 auto;padding:20px max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left))}
+header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;border-bottom:3px solid var(--terra);padding-bottom:14px;margin-bottom:18px}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--terra);font-weight:600}
+h1{margin:2px 0 0;font-size:24px;line-height:1.2}
+.sub{color:var(--muted);font-size:13px}
+.ctrl{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ctrl label{font-size:12px;color:var(--muted)}
+input,select,button{font:inherit;color:inherit}
+input[type=date],input[type=text],select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+button{cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--surface);padding:7px 12px;font-weight:500}
+button.primary{background:var(--terra);border-color:var(--terra);color:#fff}
+button:disabled{opacity:.5;cursor:not-allowed}
+.status{font-size:12px;color:var(--muted)}
+.status.err{color:var(--bad)}
+.banner{background:var(--water-soft);border-left:5px solid var(--water);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:14px}
+.banner b{color:var(--water)}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--surface);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);border-top:4px solid var(--terra)}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi .v{font-size:26px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi .d{font-size:12px;color:var(--muted)}
+.kpi.water{border-top-color:var(--water)}.kpi.bad{border-top-color:var(--bad)}.kpi.ok{border-top-color:var(--ok)}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tabs button[aria-selected=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.board{display:grid;align-items:start;grid-template-columns:repeat(5,minmax(200px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}
+.col{background:var(--surface2);border-radius:12px;padding:10px;min-height:240px;display:flex;flex-direction:column;gap:8px;border:2px solid transparent}
+.col.over{border-color:var(--bad)}
+.col.drop{border-color:var(--water);border-style:dashed}
+.col h3{margin:0;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.wip{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--surface);color:var(--muted)}
+.col.over .wip{background:var(--bad);color:#fff}
+.card{background:var(--surface);border-radius:10px;padding:9px 10px;box-shadow:var(--shadow);border-left:4px solid var(--idle);cursor:grab;user-select:none}
+.card:focus-visible{outline:2px solid var(--water);outline-offset:2px}
+.card.late{border-left-color:var(--bad)}.card.ontrack{border-left-color:var(--ok)}.card.done{border-left-color:var(--water)}
+.card .code{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:6px}
+.card .name{font-weight:600;font-size:13px;margin:2px 0 6px}
+.bar{height:6px;background:var(--line);border-radius:99px;position:relative;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--terra);border-radius:99px}
+.bar b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink)}
+.card .meta{display:flex;gap:6px;flex-wrap:wrap;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:5px}
+.tag{align-self:flex-start;white-space:nowrap;font-size:10px;font-weight:600;padding:1px 6px;border-radius:99px;background:var(--bad);color:#fff}
+.empty{color:var(--muted);font-size:12px;text-align:center;padding:16px 4px}
+.milestones{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+.ms{display:flex;gap:8px;align-items:center;background:var(--surface);border-radius:99px;padding:5px 12px 5px 6px;box-shadow:var(--shadow);font-size:12px}
+.ms .dot{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:700;background:var(--idle)}
+.ms.done .dot{background:var(--ok)}.ms.next .dot{background:var(--terra)}
+.dash{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.panel{background:var(--surface);border-radius:12px;padding:14px;box-shadow:var(--shadow);min-width:0}
+.panel h4{margin:0 0 10px;font-size:14px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:6px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500;font-size:11.5px}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.pill{font-size:11px;padding:1px 8px;border-radius:99px;color:#fff;white-space:nowrap}
+dialog{border:none;border-radius:14px;padding:0;background:var(--surface);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.35);width:min(460px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(29,20,16,.45)}
+.dlg{padding:18px}
+.dlg h2{margin:0 0 4px;font-size:18px}
+.field{display:flex;flex-direction:column;gap:4px;margin:12px 0}
+.field label{font-size:12px;color:var(--muted)}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:calc(100vw - 32px)}
+.toast.show{opacity:1}
+.hidden{display:none!important}
+svg text{font-family:Poppins,system-ui,sans-serif}
+@media (max-width:900px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dash{grid-template-columns:1fr}.board{grid-template-columns:repeat(5,minmax(230px,1fr))}}
+@media (max-width:480px){h1{font-size:20px}.kpi .v{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Escuela Urumal · Puente Nacional · Santander</div>
+      <h1>Agua potable: tablero Kanban y seguimiento</h1>
+      <div class="sub">Opción C · Tubería y filtro de arcilla · Fechas objetivo 2027</div>
+    </div>
+    <div class="ctrl">
+      <label for="corte">Fecha de corte</label>
+      <input type="date" id="corte" max="2027-08-31">
+      <button id="btnHoy" title="Usar la fecha de hoy como corte">Hoy</button>
+      <button id="btnEj" title="Cargar datos de ejemplo al 21 de mayo de 2027">Ver ejemplo semana 20</button>
+      <button id="btnReset" title="Volver al estado inicial">Reiniciar</button>
+      <button id="btnNew" class="primary">+ Nueva tarjeta</button>
+      <span class="status" id="status">Copia de demostración</span>
+    </div>
+  </header>
+
+  <div class="banner hidden" id="banner"></div>
+  <section class="kpis" id="kpis"></section>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="board">Tablero</button>
+    <button role="tab" aria-selected="false" data-tab="dash">Indicadores</button>
+  </div>
+
+  <section id="view-board">
+    <div class="board" id="board"></div>
+    <div class="milestones" id="milestones"></div>
+    <p class="sub">Arrastra una tarjeta a otra columna o tócala para cambiar su avance. Los límites de trabajo en curso se respetan: si una columna está llena, termina algo antes de empezar otra cosa.</p>
+  </section>
+
+  <section id="view-dash" class="hidden">
+    <div class="dash">
+      <div class="panel"><h4>Estado de las actividades</h4><div id="donut"></div></div>
+      <div class="panel"><h4>Avance por paquete de trabajo</h4><div id="pkg"></div></div>
+      <div class="panel"><h4>Curva de avance: plan frente a real</h4><div id="trend"></div></div>
+      <div class="panel"><h4>Pendientes por responsable</h4><div id="resp"></div></div>
+      <div class="panel" style="grid-column:1/-1"><h4>Semáforo de actividades</h4><div id="table"></div></div>
+    </div>
+  </section>
+  <p class="sub" style="margin-top:24px">Copia de demostración para la sustentación. Los cambios que hagas se guardan solo en este navegador y no afectan a nadie más. Con “Reiniciar” vuelves al estado inicial.</p>
+</div>
+
+<dialog id="dlg"><form method="dialog" class="dlg" id="form">
+  <div class="sub" id="fCode"></div>
+  <h2 id="fTitle">Tarjeta</h2>
+  <div id="newFields">
+    <div class="field"><label for="fName">Actividad</label><input type="text" id="fName" maxlength="80"></div>
+    <div class="row">
+      <div class="field"><label for="fPkg">Paquete</label><select id="fPkg"></select></div>
+      <div class="field"><label for="fResp">Responsable</label><select id="fResp"></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="fIni">Inicio</label><input type="date" id="fIni" min="2027-01-04" max="2027-08-06"></div>
+      <div class="field"><label for="fFin">Fin objetivo</label><input type="date" id="fFin" min="2027-01-04" max="2027-08-06"></div>
+    </div>
+  </div>
+  <div class="field"><label for="fCol">Columna</label><select id="fCol"></select></div>
+  <div class="field"><label for="fReal">Avance real: <b id="fRealV">0%</b> <span id="fPlan"></span></label><input type="range" id="fReal" min="0" max="100" step="5"></div>
+  <div class="actions"><button value="cancel" formnovalidate>Cancelar</button><button value="ok" class="primary" id="fSave">Guardar</button></div>
+</form></dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const COLS=[
+  {k:"porhacer",n:"Por hacer",wip:null},
+  {k:"preparacion",n:"En preparación",wip:3},
+  {k:"curso",n:"En curso",wip:4},
+  {k:"revision",n:"En revisión",wip:2},
+  {k:"terminado",n:"Terminado",wip:null}];
+const PKGS=["Concientización","Purificar el agua en casa","Implementación Filtrón"];
+const RESPS=["Gerente","Capacitadores","Publicistas","Artesanos","Laboratorio"];
+const HITOS=[["2027-01-04","Arranque del proyecto"],["2027-05-28","Comunidad capacitada"],["2027-07-02","Filtros instalados"],["2027-08-06","Entrega y cierre"]];
+const START="2027-01-04",END="2027-08-06";
+const HOY=(()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)})();
+let tasks=[],corte=HOY,hist=[],db=null,canWrite=true,editing=null;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const D=s=>new Date(s+"T00:00:00Z");
+const days=(a,b)=>(D(b)-D(a))/864e5;
+const fmt=s=>{const d=D(s);return d.getUTCDate()+" "+["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"][d.getUTCMonth()]};
+const week=s=>Math.max(1,Math.min(31,Math.floor(days(START,s)/7)+1));
+function planPct(t,at){if(at<t.inicio)return 0;if(at>=t.fin)return 100;return Math.round(100*days(t.inicio,at)/Math.max(1,days(t.inicio,t.fin)))}
+function dur(t){return Math.max(1,days(t.inicio,t.fin))}
+function estado(t){
+  if(t.columna==="terminado")return"Terminado";
+  const p=planPct(t,corte);
+  if(p-(t.real||0)>=10)return"Atrasada";
+  if(t.columna==="porhacer"||t.columna==="preparacion")return"Por iniciar";
+  return"En curso"}
+const ECOL={"Terminado":"var(--water)","En curso":"var(--ok)","Atrasada":"var(--bad)","Por iniciar":"var(--idle)"};
+function weighted(list,f){const w=list.reduce((a,t)=>a+dur(t),0);return w?list.reduce((a,t)=>a+f(t)*dur(t),0)/w:0}
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove("show"),2800)}
+function setStatus(m,err){const s=$("#status");s.textContent=m;s.classList.toggle("err",!!err)}
+
+function render(){renderKpis();renderBoard();renderMs();if(!$("#view-dash").classList.contains("hidden"))renderDash()}
+function renderBanner(){const b=$("#banner");
+  if(corte<START){const n=Math.ceil(days(corte,START));b.innerHTML=`<b>El proyecto aún no ha iniciado.</b> Arranca el lunes 4 de enero de 2027: faltan <b>${n} días</b>. Por ahora el tablero muestra el trabajo listo para empezar y el plan en 0%.`;b.classList.remove("hidden")}
+  else if(corte>END){b.innerHTML="<b>El proyecto terminó</b> el 6 de agosto de 2027.";b.classList.remove("hidden")}
+  else b.classList.add("hidden")}
+function renderKpis(){renderBanner();
+  const real=weighted(tasks,t=>t.real||0),plan=weighted(tasks,t=>planPct(t,corte));
+  const by=k=>tasks.filter(t=>estado(t)===k).length;
+  const gap=real-plan;
+  $("#kpis").innerHTML=`
+  <div class="kpi"><div class="l">Avance real</div><div class="v">${Math.round(real)}%</div><div class="d">Plan a la fecha: ${Math.round(plan)}%</div></div>
+  <div class="kpi ${gap<-3?"bad":"ok"}"><div class="l">Diferencia con el plan</div><div class="v">${gap>=0?"+":""}${Math.round(gap)} pts</div><div class="d">${corte<START?"Aún no inicia":"Semana "+week(corte)+" del proyecto"}</div></div>
+  <div class="kpi water"><div class="l">Terminadas</div><div class="v">${by("Terminado")} / ${tasks.length}</div><div class="d">actividades</div></div>
+  <div class="kpi ok"><div class="l">En curso</div><div class="v">${by("En curso")}</div><div class="d">al día</div></div>
+  <div class="kpi bad"><div class="l">Atrasadas</div><div class="v">${by("Atrasada")}</div><div class="d">10 pts o más por debajo del plan</div></div>`}
+function renderBoard(){
+  const b=$("#board");b.innerHTML="";
+  for(const c of COLS){
+    const list=tasks.filter(t=>t.columna===c.k).sort((a,b)=>a.codigo.localeCompare(b.codigo,undefined,{numeric:true}));
+    const col=document.createElement("div");col.className="col"+(c.wip&&list.length>c.wip?" over":"");col.dataset.col=c.k;
+    col.innerHTML=`<h3>${c.n}<span class="wip">${list.length}${c.wip?" / máx. "+c.wip:""}</span></h3>`;
+    if(!list.length)col.insertAdjacentHTML("beforeend",`<div class="empty">${tasks.length?"Sin tarjetas":"Aún no hay actividades cargadas"}</div>`);
+    for(const t of list){
+      const e=estado(t),p=planPct(t,corte);
+      const el=document.createElement("div");
+      el.className="card "+(e==="Terminado"?"done":e==="Atrasada"?"late":e==="En curso"?"ontrack":"");
+      el.tabIndex=0;el.draggable=canWrite;el.dataset.id=t.id;
+      el.innerHTML=`<div class="code"><span>${esc(t.codigo)} · ${esc(t.paquete)}</span>${e==="Atrasada"?'<span class="tag">Atrasada</span>':""}</div>
+      <div class="name">${esc(t.nombre)}</div>
+      <div class="bar" title="Real ${t.real||0}% · Plan ${p}%"><i style="width:${t.real||0}%"></i><b style="left:calc(${p}% - 1px)"></b></div>
+      <div class="meta"><span>${esc(t.responsable)}</span><span>${t.real||0}% · ${fmt(t.inicio)}–${fmt(t.fin)}</span></div>`;
+      el.addEventListener("click",()=>openEdit(t.id));
+      el.addEventListener("keydown",ev=>{if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();openEdit(t.id)}});
+      el.addEventListener("dragstart",ev=>{ev.dataTransfer.setData("text/plain",t.id);ev.dataTransfer.effectAllowed="move"});
+      col.appendChild(el)}
+    col.addEventListener("dragover",ev=>{if(!canWrite)return;ev.preventDefault();col.classList.add("drop")});
+    col.addEventListener("dragleave",()=>col.classList.remove("drop"));
+    col.addEventListener("drop",ev=>{ev.preventDefault();col.classList.remove("drop");moveTo(ev.dataTransfer.getData("text/plain"),c.k)});
+    b.appendChild(col)}}
+function renderMs(){
+  let nextSet=false;
+  $("#milestones").innerHTML=HITOS.map(([d,n],i)=>{let cls="";if(d<=corte)cls="done";else if(!nextSet){cls="next";nextSet=true}
+    return`<div class="ms ${cls}"><span class="dot">${i+1}</span><span><b>Hito ${i+1}</b> · ${fmt(d)} 2027 · ${n}</span></div>`}).join("")}
+
+function wipOk(colKey,ignoreId){const c=COLS.find(x=>x.k===colKey);if(!c.wip)return true;return tasks.filter(t=>t.columna===colKey&&t.id!==ignoreId).length<c.wip}
+async function save(id,patch){
+  if(!db){toast("Sin conexión con el almacenamiento compartido; el cambio no se guardó.");return false}
+  const t=tasks.find(x=>x.id===id);const prev={...t};Object.assign(t,patch);render();
+  try{await db.doc("tareas/"+id).update(patch);setStatus("Guardado");return true}
+  catch(e){Object.assign(t,prev);render();
+    if(e&&(e.code==="permission_denied"||e.code==="not_granted")){canWrite=false;applyRO();toast("Tienes acceso de solo lectura a este tablero.")}
+    else toast("No se pudo guardar: "+(e&&e.message||"error"));return false}}
+function moveTo(id,colKey){
+  const t=tasks.find(x=>x.id===id);if(!t||t.columna===colKey)return;
+  if(!wipOk(colKey,id)){const c=COLS.find(x=>x.k===colKey);toast(`“${c.n}” ya tiene ${c.wip} tarjetas. Termina una antes de mover otra.`);return}
+  const patch={columna:colKey};if(colKey==="terminado")patch.real=100;if(colKey==="porhacer")patch.real=0;
+  save(id,patch)}
+
+function fillSelect(sel,opts,val){sel.innerHTML=opts.map(o=>`<option value="${esc(o.k??o)}">${esc(o.n??o)}</option>`).join("");if(val!=null)sel.value=val}
+function openEdit(id){
+  editing=id;const t=id?tasks.find(x=>x.id===id):null;
+  $("#newFields").classList.toggle("hidden",!!t);
+  $("#fTitle").textContent=t?t.nombre:"Nueva tarjeta";
+  $("#fCode").textContent=t?`${t.codigo} · ${t.paquete} · ${t.responsable} · ${fmt(t.inicio)} a ${fmt(t.fin)} 2027`:"Se agrega a la columna que elijas";
+  fillSelect($("#fCol"),COLS,t?t.columna:"porhacer");
+  if(!t){fillSelect($("#fPkg"),PKGS,PKGS[0]);fillSelect($("#fResp"),RESPS,RESPS[1]);$("#fName").value="";$("#fIni").value=corte;$("#fFin").value=corte}
+  $("#fReal").value=t?t.real||0:0;updReal();
+  $("#fPlan").textContent=t?`(plan ${planPct(t,corte)}%)`:"";
+  [...$("#form").elements].forEach(e=>{if(e.value!=="cancel")e.disabled=!canWrite});
+  $("#dlg").showModal()}
+function updReal(){$("#fRealV").textContent=$("#fReal").value+"%"}
+$("#fReal").addEventListener("input",updReal);
+$("#dlg").addEventListener("close",async()=>{
+  if($("#dlg").returnValue!=="ok"||!canWrite)return;
+  const col=$("#fCol").value;let real=+$("#fReal").value;
+  if(col==="terminado")real=100;
+  if(editing){
+    const t=tasks.find(x=>x.id===editing);
+    if(col!==t.columna&&!wipOk(col,editing)){toast(`“${COLS.find(c=>c.k===col).n}” está en su límite.`);return}
+    if(col!==t.columna||real!==(t.real||0))save(editing,{columna:col,real})}
+  else{
+    const nombre=$("#fName").value.trim();const ini=$("#fIni").value,fin=$("#fFin").value;
+    if(!nombre||!ini||!fin||fin<ini){toast("Escribe el nombre y unas fechas válidas.");return}
+    if(!wipOk(col)){toast(`“${COLS.find(c=>c.k===col).n}” está en su límite.`);return}
+    if(!db){toast("Sin conexión con el almacenamiento compartido.");return}
+    const pk=$("#fPkg").value,pref={"Concientización":"1.2","Purificar el agua en casa":"1.3","Implementación Filtrón":"1.5"}[pk];
+    const n=tasks.filter(t=>t.codigo.startsWith(pref+".")).map(t=>+t.codigo.split(".")[2]).reduce((a,b)=>Math.max(a,b),0)+1;
+    const data={codigo:`${pref}.${n}`,nombre,paquete:pk,responsable:$("#fResp").value,inicio:ini,fin,columna:col,real};
+    try{await db.collection("tareas").add(data);setStatus("Guardado")}catch(e){toast("No se pudo crear: "+(e&&e.message||"error"))}}});
+
+$("#corte").addEventListener("change",async e=>{
+  const v=e.target.value;if(!v)return;corte=v;render();
+  if(db&&canWrite){try{await db.doc("proyecto/config").update({corte:v})}catch(err){toast("La fecha de corte solo cambió en tu pantalla.")}}});
+$("#btnNew").addEventListener("click",()=>openEdit(null));
+$("#btnHoy").addEventListener("click",async()=>{corte=HOY;$("#corte").value=HOY;render();
+  if(db&&canWrite){try{await db.doc("proyecto/config").update({corte:""})}catch(e){}}});
+document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("[data-tab]").forEach(x=>x.setAttribute("aria-selected",x===b));
+  $("#view-board").classList.toggle("hidden",b.dataset.tab!=="board");
+  $("#view-dash").classList.toggle("hidden",b.dataset.tab!=="dash");render()}));
+function applyRO(){$("#btnNew").disabled=!canWrite;$("#corte").disabled=!canWrite;document.querySelectorAll(".card").forEach(c=>c.draggable=canWrite)}
+
+/* ---------- dashboard ---------- */
+function renderDash(){
+  const cats=["Terminado","En curso","Atrasada","Por iniciar"];
+  const cnt=cats.map(k=>tasks.filter(t=>estado(t)===k).length),tot=tasks.length||1;
+  let a=-Math.PI/2,arcs="";const R=70,r=44,cx=90,cy=90;
+  cnt.forEach((v,i)=>{if(!v)return;const a2=a+2*Math.PI*v/tot,large=a2-a>Math.PI?1:0,
+    p=(ang,rad)=>[cx+rad*Math.cos(ang),cy+rad*Math.sin(ang)];
+    const full=v===tot;
+    if(full){arcs+=`<circle cx="${cx}" cy="${cy}" r="${(R+r)/2}" fill="none" stroke="${ECOL[cats[i]]}" stroke-width="${R-r}"/>`}
+    else{const[x1,y1]=p(a,R),[x2,y2]=p(a2,R),[x3,y3]=p(a2,r),[x4,y4]=p(a,r);
+    arcs+=`<path d="M${x1},${y1}A${R},${R} 0 ${large} 1 ${x2},${y2}L${x3},${y3}A${r},${r} 0 ${large} 0 ${x4},${y4}Z" fill="${ECOL[cats[i]]}" stroke="var(--surface)" stroke-width="2"><title>${cats[i]}: ${v}</title></path>`}
+    a=a2});
+  $("#donut").innerHTML=`<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap"><svg viewBox="0 0 180 180" width="170" height="170" role="img" aria-label="Estado de actividades">${arcs}<text x="90" y="88" text-anchor="middle" font-size="26" font-weight="700" fill="var(--ink)">${tasks.length}</text><text x="90" y="106" text-anchor="middle" font-size="11" fill="var(--muted)">actividades</text></svg>
+  <table style="width:auto;flex:1">${cats.map((k,i)=>`<tr><td><span class="pill" style="background:${ECOL[k]}">${k}</span></td><td class="num"><b>${cnt[i]}</b></td><td class="num">${Math.round(100*cnt[i]/tot)}%</td></tr>`).join("")}</table></div>`;
+
+  $("#pkg").innerHTML=`<div class="legend" style="margin-bottom:8px"><span style="--c:var(--terra)">Real</span><span style="--c:var(--terra-soft)">Plan</span></div>`+PKGS.map(p=>{
+    const l=tasks.filter(t=>t.paquete===p);const re=Math.round(weighted(l,t=>t.real||0)),pl=Math.round(weighted(l,t=>planPct(t,corte)));
+    return`<div style="margin:10px 0"><div style="display:flex;justify-content:space-between;font-size:12.5px"><b>${p}</b><span>${re}% <span class="sub">/ plan ${pl}%</span></span></div>
+    <div class="bar" style="height:9px;margin-top:3px;background:var(--line)"><i style="width:${pl}%;background:var(--terra-soft)"></i><i style="width:${re}%"></i></div></div>`}).join("");
+
+  // trend
+  const W=560,H=220,L=36,B=26,T=10,Rr=10,wk=31,cw=week(corte);
+  const x=w=>L+(W-L-Rr)*(w-1)/(wk-1),y=v=>T+(H-T-B)*(1-v/100);
+  const dateOf=w=>{const d=D(START);d.setUTCDate(d.getUTCDate()+(w-1)*7+6);return d.toISOString().slice(0,10)};
+  const planPts=[];for(let w=1;w<=wk;w++)planPts.push([x(w),y(weighted(tasks,t=>planPct(t,dateOf(w))))]);
+  const realH=[...hist.filter(h=>h.semana<cw)].sort((a,b)=>a.semana-b.semana);
+  const started=corte>=START;
+  if(started)realH.push({semana:cw,real:weighted(tasks,t=>t.real||0)});
+  const realPts=realH.map(h=>[x(h.semana),y(h.real)]);
+  const grid=[0,25,50,75,100].map(v=>`<line x1="${L}" x2="${W-Rr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${y(v)+4}" font-size="10" text-anchor="end" fill="var(--muted)">${v}%</text>`).join("");
+  const xt=[1,5,9,13,17,21,25,31].map(w=>`<text x="${x(w)}" y="${H-8}" font-size="10" text-anchor="${w===31?"end":w===1?"start":"middle"}" fill="var(--muted)">sem ${w}</text>`).join("");
+  const hm=HITOS.map(([d])=>`<line x1="${x(week(d))}" x2="${x(week(d))}" y1="${T}" y2="${H-B}" stroke="var(--muted)" stroke-dasharray="2 3" opacity=".6"/>`).join("");
+  const pl=pts=>pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+","+p[1].toFixed(1)).join("");
+  $("#trend").innerHTML=`<div class="legend" style="margin-bottom:6px"><span style="--c:var(--terra-soft)">Plan</span><span style="--c:var(--terra)">Real</span><span style="--c:var(--muted)">Hitos (líneas punteadas)</span></div>
+  <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Curva de avance">${grid}${hm}${xt}
+  ${started?`<line x1="${x(cw)}" x2="${x(cw)}" y1="${T}" y2="${H-B}" stroke="var(--water)" stroke-width="1.5"/><text x="${x(cw)+4}" y="${T+10}" font-size="10" fill="var(--water)">corte</text>`:`<text x="${L+8}" y="${T+14}" font-size="11" fill="var(--water)">Sin avance real todavía: el proyecto inicia el 4 ene 2027</text>`}
+  <path d="${pl(planPts)}" fill="none" stroke="var(--terra-soft)" stroke-width="2.5"/>
+  <path d="${pl(realPts)}" fill="none" stroke="var(--terra)" stroke-width="3"/>
+  ${realPts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="var(--terra)"><title>Semana ${realH[i].semana}: ${Math.round(realH[i].real)}%</title></circle>`).join("")}</svg>`;
+
+  const pend=RESPS.map(r=>[r,tasks.filter(t=>t.responsable===r&&t.columna!=="terminado").length]).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);
+  const mx=Math.max(1,...pend.map(p=>p[1]));
+  $("#resp").innerHTML=pend.length?pend.map(([r,v])=>`<div style="display:grid;grid-template-columns:110px 1fr 28px;gap:8px;align-items:center;margin:9px 0;font-size:12.5px"><span>${r}</span><div class="bar" style="height:14px"><i style="width:${100*v/mx}%;background:var(--water)"></i></div><b class="num">${v}</b></div>`).join(""):`<div class="empty">Sin pendientes</div>`;
+
+  const rows=[...tasks].sort((a,b)=>a.codigo.localeCompare(b.codigo,undefined,{numeric:true}));
+  $("#table").innerHTML=`<div style="overflow-x:auto"><table><thead><tr><th>EDT</th><th>Actividad</th><th>Responsable</th><th>Fechas objetivo</th><th class="num">Plan</th><th class="num">Real</th><th>Columna</th><th>Estado</th></tr></thead><tbody>
+  ${rows.map(t=>{const e=estado(t);return`<tr><td>${esc(t.codigo)}</td><td>${esc(t.nombre)}</td><td>${esc(t.responsable)}</td><td>${fmt(t.inicio)} – ${fmt(t.fin)}</td><td class="num">${planPct(t,corte)}%</td><td class="num">${t.real||0}%</td><td>${COLS.find(c=>c.k===t.columna)?.n||""}</td><td><span class="pill" style="background:${ECOL[e]}">${e}</span></td></tr>`}).join("")}</tbody></table></div>`}
+
+/* ---------- data (versión independiente) ---------- */
+const SEED_INI=[{"id": "t1_2_1", "codigo": "1.2.1", "nombre": "Diseño campaña de concientización", "paquete": "Concientización", "responsable": "Publicistas", "inicio": "2027-01-04", "fin": "2027-01-29", "columna": "preparacion", "real": 0}, {"id": "t1_2_2", "codigo": "1.2.2", "nombre": "Concientización · fase 1", "paquete": "Concientización", "responsable": "Capacitadores", "inicio": "2027-02-01", "fin": "2027-03-26", "columna": "porhacer", "real": 0}, {"id": "t1_2_3", "codigo": "1.2.3", "nombre": "Concientización · fase 2", "paquete": "Concientización", "responsable": "Capacitadores", "inicio": "2027-03-29", "fin": "2027-05-21", "columna": "porhacer", "real": 0}, {"id": "t1_2_4", "codigo": "1.2.4", "nombre": "Evaluar campaña de concientización", "paquete": "Concientización", "responsable": "Capacitadores", "inicio": "2027-05-24", "fin": "2027-05-28", "columna": "porhacer", "real": 0}, {"id": "t1_3_1", "codigo": "1.3.1", "nombre": "Diseño campaña de purificación", "paquete": "Purificar el agua en casa", "responsable": "Publicistas", "inicio": "2027-01-04", "fin": "2027-01-29", "columna": "preparacion", "real": 0}, {"id": "t1_3_2", "codigo": "1.3.2", "nombre": "Purificación del agua · fase 1", "paquete": "Purificar el agua en casa", "responsable": "Capacitadores", "inicio": "2027-02-01", "fin": "2027-02-26", "columna": "porhacer", "real": 0}, {"id": "t1_3_3", "codigo": "1.3.3", "nombre": "Purificación del agua · fase 2", "paquete": "Purificar el agua en casa", "responsable": "Capacitadores", "inicio": "2027-03-01", "fin": "2027-03-26", "columna": "porhacer", "real": 0}, {"id": "t1_3_4", "codigo": "1.3.4", "nombre": "Purificación del agua · fase 3", "paquete": "Purificar el agua en casa", "responsable": "Capacitadores", "inicio": "2027-03-29", "fin": "2027-04-23", "columna": "porhacer", "real": 0}, {"id": "t1_3_5", "codigo": "1.3.5", "nombre": "Evaluar campaña de purificación", "paquete": "Purificar el agua en casa", "responsable": "Capacitadores", "inicio": "2027-04-26", "fin": "2027-04-30", "columna": "porhacer", "real": 0}, {"id": "t1_5_1", "codigo": "1.5.1", "nombre": "Contratar artesanos", "paquete": "Implementación Filtrón", "responsable": "Gerente", "inicio": "2027-01-04", "fin": "2027-01-29", "columna": "preparacion", "real": 0}, {"id": "t1_5_2", "codigo": "1.5.2", "nombre": "Capacitación artesanos · fase 1", "paquete": "Implementación Filtrón", "responsable": "Capacitadores", "inicio": "2027-02-01", "fin": "2027-02-26", "columna": "porhacer", "real": 0}, {"id": "t1_5_3", "codigo": "1.5.3", "nombre": "Evaluación de la capacitación 1", "paquete": "Implementación Filtrón", "responsable": "Capacitadores", "inicio": "2027-03-01", "fin": "2027-03-05", "columna": "porhacer", "real": 0}, {"id": "t1_5_4", "codigo": "1.5.4", "nombre": "Capacitación artesanos · fase 2", "paquete": "Implementación Filtrón", "responsable": "Capacitadores", "inicio": "2027-03-08", "fin": "2027-04-02", "columna": "porhacer", "real": 0}, {"id": "t1_5_5", "codigo": "1.5.5", "nombre": "Evaluación de la capacitación 2", "paquete": "Implementación Filtrón", "responsable": "Capacitadores", "inicio": "2027-04-05", "fin": "2027-04-09", "columna": "porhacer", "real": 0}, {"id": "t1_5_6", "codigo": "1.5.6", "nombre": "Fabricar filtros Filtrón", "paquete": "Implementación Filtrón", "responsable": "Artesanos", "inicio": "2027-04-12", "fin": "2027-06-04", "columna": "porhacer", "real": 0}, {"id": "t1_5_7", "codigo": "1.5.7", "nombre": "Secado de los filtros", "paquete": "Implementación Filtrón", "responsable": "Artesanos", "inicio": "2027-06-07", "fin": "2027-06-25", "columna": "porhacer", "real": 0}, {"id": "t1_5_8", "codigo": "1.5.8", "nombre": "Instalar filtros en la escuela", "paquete": "Implementación Filtrón", "responsable": "Artesanos", "inicio": "2027-06-28", "fin": "2027-07-02", "columna": "porhacer", "real": 0}, {"id": "t1_5_10", "codigo": "1.5.10", "nombre": "Asegurar calidad del agua", "paquete": "Implementación Filtrón", "responsable": "Laboratorio", "inicio": "2027-07-05", "fin": "2027-08-06", "columna": "porhacer", "real": 0}, {"id": "t1_5_11", "codigo": "1.5.11", "nombre": "Asegurar sostenibilidad", "paquete": "Implementación Filtrón", "responsable": "Gerente", "inicio": "2027-07-05", "fin": "2027-08-06", "columna": "porhacer", "real": 0}];
+const SEED_EJ=[{"id": "t1_2_1", "codigo": "1.2.1", "nombre": "Diseño campaña de concientización", "paquete": "Concientización", "responsable": "Publicistas", "inicio": "2027-01-04", "fin": "2027-01-29", "columna": "terminado", "real": 100}, {"id": "t1_2_2", "codigo": "1.2.2", "nombre": "Concientización · fase 1", "paquete": "Concientización", "responsable": "Capacitadores", "inicio": "2027-02-01", "fin": "2027-03-26", "columna": "terminado", "real": 100}, {"id": "t1_2_3", "codigo": "1.2.3", "nombre": "Concientización · fase 2", "paquete": "Concientización", "responsable": "Capacitadores", "inicio": "2027-03-29", "fin": "2027-05-21", "columna": "curso", "real": 92}, {"id": "t1_2_4", "codigo": "1.2.4", "nombre": "Evaluar campaña de concientización", "paquete": "Concientización", "responsable": "Capacitadores", "inicio": "2027-05-24", "fin": "2027-05-28", "columna": "preparacion", "real": 0}, {"id": "t1_3_1", "codigo": "1.3.1", "nombre": "Diseño campaña de purificación", "paquete": "Purificar el agua en casa", "responsable": "Publicistas", "inicio": "2027-01-04", "fin": "2027-01-29", "columna": "terminado", "real": 100}, {"id": "t1_3_2", "codigo": "1.3.2", "nombre": "Purificación del agua · fase 1", "paquete": "Purificar el agua en casa", "responsable": "Capacitadores", "inicio": "2027-02-01", "fin": "2027-02-26", "columna": "terminado", "real": 100}, {"id": "t1_3_3", "codigo": "1.3.3", "nombre": "Purificación del agua · fase 2", "paquete": "Purificar el agua en casa", "responsable": "Capacitadores", "inicio": "2027-03-01", "fin": "2027-03-26", "columna": "terminado", "real": 100}, {"id": "t1_3_4", "codigo": "1.3.4", "nombre": "Purificación del agua · fase 3", "paquete": "Purificar el agua en casa", "responsable": "Capacitadores", "inicio": "2027-03-29", "fin": "2027-04-23", "columna": "terminado", "real": 100}, {"id": "t1_3_5", "codigo": "1.3.5", "nombre": "Evaluar campaña de purificación", "paquete": "Purificar el agua en casa", "responsable": "Capacitadores", "inicio": "2027-04-26", "fin": "2027-04-30", "columna": "terminado", "real": 100}, {"id": "t1_5_1", "codigo": "1.5.1", "nombre": "Contratar artesanos", "paquete": "Implementación Filtrón", "responsable": "Gerente", "inicio": "2027-01-04", "fin": "2027-01-29", "columna": "terminado", "real": 100}, {"id": "t1_5_2", "codigo": "1.5.2", "nombre": "Capacitación artesanos · fase 1", "paquete": "Implementación Filtrón", "responsable": "Capacitadores", "inicio": "2027-02-01", "fin": "2027-02-26", "columna": "terminado", "real": 100}, {"id": "t1_5_3", "codigo": "1.5.3", "nombre": "Evaluación de la capacitación 1", "paquete": "Implementación Filtrón", "responsable": "Capacitadores", "inicio": "2027-03-01", "fin": "2027-03-05", "columna": "terminado", "real": 100}, {"id": "t1_5_4", "codigo": "1.5.4", "nombre": "Capacitación artesanos · fase 2", "paquete": "Implementación Filtrón", "responsable": "Capacitadores", "inicio": "2027-03-08", "fin": "2027-04-02", "columna": "terminado", "real": 100}, {"id": "t1_5_5", "codigo": "1.5.5", "nombre": "Evaluación de la capacitación 2", "paquete": "Implementación Filtrón", "responsable": "Capacitadores", "inicio": "2027-04-05", "fin": "2027-04-09", "columna": "terminado", "real": 100}, {"id": "t1_5_6", "codigo": "1.5.6", "nombre": "Fabricar filtros Filtrón", "paquete": "Implementación Filtrón", "responsable": "Artesanos", "inicio": "2027-04-12", "fin": "2027-06-04", "columna": "curso", "real": 50}, {"id": "t1_5_7", "codigo": "1.5.7", "nombre": "Secado de los filtros", "paquete": "Implementación Filtrón", "responsable": "Artesanos", "inicio": "2027-06-07", "fin": "2027-06-25", "columna": "preparacion", "real": 0}, {"id": "t1_5_8", "codigo": "1.5.8", "nombre": "Instalar filtros en la escuela", "paquete": "Implementación Filtrón", "responsable": "Artesanos", "inicio": "2027-06-28", "fin": "2027-07-02", "columna": "porhacer", "real": 0}, {"id": "t1_5_10", "codigo": "1.5.10", "nombre": "Asegurar calidad del agua", "paquete": "Implementación Filtrón", "responsable": "Laboratorio", "inicio": "2027-07-05", "fin": "2027-08-06", "columna": "porhacer", "real": 0}, {"id": "t1_5_11", "codigo": "1.5.11", "nombre": "Asegurar sostenibilidad", "paquete": "Implementación Filtrón", "responsable": "Gerente", "inicio": "2027-07-05", "fin": "2027-08-06", "columna": "porhacer", "real": 0}];
+const HIST_EJ=[{"semana": 5, "real": 15.0}, {"semana": 9, "real": 30.7}, {"semana": 13, "real": 48.1}, {"semana": 17, "real": 65.3}];
+const KEY="urumal-kanban-demo-v1";
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({tasks,corte,hist}))}catch(e){}}
+function loadState(t,c,h){tasks=JSON.parse(JSON.stringify(t));corte=c;hist=h;$("#corte").value=corte;render();applyRO()}
+db={
+  doc:p=>({update:async patch=>{const[col,id]=p.split("/");
+    if(col==="tareas"){const t=tasks.find(x=>x.id===id);if(t)Object.assign(t,patch)}
+    else if(patch.corte!==undefined){corte=patch.corte||HOY}
+    persist();render()}}),
+  collection:()=>({add:async data=>{tasks.push({id:"n"+Date.now(),...data});persist();render()}})
+};
+$("#btnEj").addEventListener("click",()=>{loadState(SEED_EJ,"2027-05-21",HIST_EJ);persist();toast("Ejemplo cargado: corte al 21 de mayo de 2027 (semana 20 de 31).")});
+$("#btnReset").addEventListener("click",()=>{loadState(SEED_INI,HOY,[]);try{localStorage.removeItem(KEY)}catch(e){};toast("Tablero reiniciado.")});
+(()=>{let st=null;try{st=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){}
+  if(st&&Array.isArray(st.tasks))loadState(st.tasks,st.corte||HOY,st.hist||[]);else loadState(SEED_INI,HOY,[])})();
+</script>
+
+</body>
+</html>
